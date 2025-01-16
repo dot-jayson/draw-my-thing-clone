@@ -26,21 +26,23 @@
 // export default App
 
 import { useEffect, useState } from 'react'
-import { createGame, Game, fetchGames } from './lib/games'
+import { onSnapshot, collection } from 'firebase/firestore'
+import { createGame, Game } from './lib/games'
+import { db } from './lib/firebase'
 
 const App: React.FC = () => {
   const [games, setGames] = useState<Game[]>([])
 
   useEffect(() => {
-    const loadGames = async () => {
-      try {
-        const fetchedGames = await fetchGames()
-        setGames(fetchedGames)
-      } catch (error) {
-        console.error('Failed to load games: ', error)
-      }
-    }
-    loadGames()
+    // Real time listener for games collection
+    const unsubscribe = onSnapshot(collection(db, 'games'), (snapshot) => {
+      const updatedGames = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Game[]
+      setGames(updatedGames)
+    })
+    return () => unsubscribe()
   }, [])
 
   const handleCreateGame = async () => {
@@ -52,8 +54,8 @@ const App: React.FC = () => {
     }
 
     try {
-      const createdGame = await createGame(newGame) // Get game with ID
-      setGames((prevGames) => [...prevGames, createdGame]) // Update state
+      const createdGame = await createGame(newGame)
+      console.log('Game created: ', createdGame)
     } catch (error) {
       console.error('Error creating game: ', error)
     }
